@@ -8,14 +8,11 @@
 //! (see [Starknet Tx format](https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#invoke_transaction_version_1))
 
 use apdu_generator::apdu::Call;
-use apdu_generator::builder::{
-    get_pubkey_apdu, get_sign_hash_apdu, get_sign_tx_apdu, get_version_apdu,
-};
 
 /// Derivation path
 const PATH: &str = "m/2645'/1195502025'/1148870696'/0'/0'/0";
 /// Hash
-const HASH: &str = "0x55b8f28706a5008d3103bcb2bfa6356e56b95c34fed265c955846670a6bb4ef";
+//const HASH: &str = "0x55b8f28706a5008d3103bcb2bfa6356e56b95c34fed265c955846670a6bb4ef";
 /// Account contract address
 const AA: &str = "0x07e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a";
 /// Max Fee
@@ -27,64 +24,52 @@ const NONCE: &str = "1";
 /// Version number
 const VERSION: &str = "1";
 /// Calls
-const CALLS: [Call; 2] = [
+const CALLS: [Call; 3] = [
     Call {
-        to: "0x0507446de5cfcb833d4e786f3a0510deb2429ae753741a836a7efa80c9c747cb",
-        entrypoint: "mint",
-        calldata: [
+        to: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+        entrypoint: "transfer",
+        selector: "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+        calldata: &[
             "0x07e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a",
             "1000",
         ],
     },
     Call {
-        to: "0x0507446de5cfcb833d4e786f3a0510deb2429ae753741a836a7efa80c9c747cb",
-        entrypoint: "approve",
-        calldata: [
+        to: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+        entrypoint: "transfer",
+        selector: "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+        calldata: &[
             "0x07e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a",
-            "10000",
+            "1000",
+        ],
+    },
+    Call {
+        to: "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+        entrypoint: "transfer",
+        selector: "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+        calldata: &[
+            "0x07e00d496e324876bbc8531f2d9a82bf154d1a04a50218ee74cdd372f75a551a",
+            "1000",
         ],
     },
 ];
 
 fn main() {
-    println!("=> Get Version APDUs");
-    match get_version_apdu() {
+    println!("=> Clear Sign Tx APDUs");
+    match apdu_generator::builder::get_clear_sign_tx_apdu(PATH, &CALLS[..], AA, MAX_FEE, CHAIN_ID, NONCE, VERSION) {
         Ok(v) => {
             for apdu in v {
-                println!("=> {apdu}");
+                println!("=> {apdu}\n")
             }
         }
         Err(_e) => println!("Internal error")
     }
-    
 
-    println!("=> Get Pub key APDUs");
-    match get_pubkey_apdu(PATH) {
+    println!("=> Blur Sign Tx APDUs");
+    match apdu_generator::builder::get_blur_sign_tx_apdu(PATH, &CALLS[..], AA, MAX_FEE, CHAIN_ID, NONCE, VERSION) {
         Ok(v) => {
             for apdu in v {
-                println!("=> {apdu}");
-            }
-        }
-        Err(_e) => println!("Internal error")
-    }
-    
-
-    println!("=> Sign Hash APDUs");
-    match get_sign_hash_apdu(PATH, HASH, true) {
-        Ok(v) => {
-            for apdu in v {
-                println!("=> {apdu}")
-            }
-        }
-        Err(_e) => println!("Internal error")
-    }
-    
-
-    println!("=> Sign Tx APDUs");
-    match get_sign_tx_apdu(PATH, &CALLS[..], AA, MAX_FEE, CHAIN_ID, NONCE, VERSION) {
-        Ok(v) => {
-            for apdu in v {
-                println!("=> {apdu}")
+                println!("=> {apdu}\n")
             }
         }
         Err(_e) => println!("Internal error")

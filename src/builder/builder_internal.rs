@@ -64,6 +64,14 @@ pub fn build_calls_metadata(calls: &[Call], apdu: &mut Apdu) {
     ));
     data = calldata_len.try_into().unwrap();
     apdu.append(data.as_slice()).unwrap();
+
+}
+
+pub fn build_callarray_len(calls: &[Call], apdu: &mut Apdu) {
+    let call_array_len: FieldElement =
+        FieldElement(U256::from_big_endian(calls.len().to_be_bytes().as_slice()));
+    let data: [u8; 32] = call_array_len.try_into().unwrap();
+    apdu.append(data.as_slice()).unwrap();
 }
 
 pub fn build_callarray_apdu(c: &Call, apdu: &mut Apdu, offset: &u8) {
@@ -102,6 +110,36 @@ pub fn build_calldata_apdu(c: &Call, apdu: &mut Apdu) {
         apdu.append(data.as_slice()).unwrap();
     }
 }
+
+pub fn build_callarray_v1_apdu(c: &Call, apdu: &mut Apdu) {
+    
+    let mut data: [u8; 32];
+
+    let to: FieldElement = FieldElement(U256::from_str_radix(c.to, 16).unwrap());
+    data = to.try_into().unwrap();
+    apdu.append(data.as_slice()).unwrap();
+
+    let selector: FieldElement = FieldElement(U256::from_str_radix(c.selector, 16).unwrap());
+    data = selector.try_into().unwrap();
+    apdu.append(data.as_slice()).unwrap();
+
+    let call_data_len: FieldElement =
+        FieldElement(U256::from_big_endian(c.calldata.len().to_be_bytes().as_slice()));
+    data = call_data_len.try_into().unwrap();
+    apdu.append(data.as_slice()).unwrap();
+}
+
+pub fn build_calldata_v1_apdu(calldata: &[&str], apdu: &mut Apdu) {
+    
+    let mut data: [u8; 32];
+
+    for cd in calldata {
+        let d = FieldElement(U256::from_str_radix(*cd, 16).unwrap());
+        data = d.try_into().unwrap();
+        apdu.append(data.as_slice()).unwrap();
+    }
+}
+
 
 pub fn fix(hash: &mut String) {
     // fix pedersen hash to fit into 32 bytes

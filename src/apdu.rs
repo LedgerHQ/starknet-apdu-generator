@@ -102,5 +102,6 @@ impl fmt::Display for Apdu {
 pub struct Call<'a> {
     pub to: &'a str,
     pub entrypoint: &'a str,
-    pub calldata: [&'a str; 2],
+    pub selector: &'a str,
+    pub calldata: &'a[&'a str],
 }
