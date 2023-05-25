@@ -1,49 +1,57 @@
-use crate::apdu::{Apdu, Call, FieldElement};
+use crate::apdu::{Apdu, ApduHeader};
+use crate::types::{Call, FieldElement};
 use ethereum_types::U256;
 
 mod builder_internal;
 use builder_internal::{
-    build_callarray_apdu, build_calldata_apdu, build_calls_metadata, build_callarray_len, build_set_derivation_path,
-    build_tx_metadata, fix,
-};
-
-use self::builder_internal::{
-    build_callarray_v1_apdu,
-    build_calldata_v1_apdu
+    set_derivation_path_apdu, 
+    tx_metadata_apdu,
+    callarray_len_apdu,
+    callarray_v1_apdu,
+    calldata_v1_apdu,
+    fix
 };
 
 pub enum ApduError {
     InternalError
 }
 
-pub fn get_version_apdu() -> Result<Vec<Apdu>, ApduError> {
+pub fn get_version_apdus() -> Result<Vec<Apdu>, ApduError> {
     Ok(vec![Apdu::new(0x80, 0x00, 0x00, 0x00)])
 }
 
-pub fn get_pubkey_apdu(path: &str) -> Result<Vec<Apdu>, ApduError> {
-    let mut apdu = Apdu::new(0x80, 0x01, 0x00, 0x00);
-    build_set_derivation_path(path, &mut apdu);
+pub fn get_pubkey_apdus(path: &str) -> Result<Vec<Apdu>, ApduError> {
+    let header: ApduHeader = ApduHeader {
+        cla: 0x80, 
+        ins: 0x01,
+        p1: 0x00, 
+        p2: 0x00
+    };
+    let apdu = set_derivation_path_apdu(path, &header);
     Ok(vec![apdu])
 }
 
-pub fn get_sign_hash_apdu(path: &str, hash: &str, show_hash: bool) -> Result<Vec<Apdu>, ApduError> {
+pub fn get_blind_sign_apdus(path: &str, hash: &str, show_hash: bool) -> Result<Vec<Apdu>, ApduError> {
+    
     let mut v: Vec<Apdu> = Vec::new();
 
-    let mut apdu = Apdu::new(0x80, 0x02, 0x00, 0x00);
-    build_set_derivation_path(path, &mut apdu);
-    v.push(apdu);
+    // apdu 0
+    let mut header: ApduHeader = ApduHeader {
+        cla: 0x80, 
+        ins: 0x02,
+        p1: 0x00, 
+        p2: 0x00
+    };
+    v.push(set_derivation_path_apdu(path, &header));
 
-    apdu = Apdu::new(
-        0x80,
-        0x02,
-        0x00,
-        match show_hash {
-            true => 0x01,
-            false => 0x00,
-        },
-    );
+    // apdu 1
+    header.p1 = 0x01;
+    header.p2 = match show_hash {
+        true => 0x01,
+        false => 0x00,
+    };
+    let mut apdu = Apdu::new(header.cla, header.ins, header.p1, header.p2);
 
-    //let mut fixed_hash = String::from(hash);
     let mut fixed_hash = String::from(hash.trim_start_matches("0x"));
     fix(&mut fixed_hash);
     let data: [u8; 32] = FieldElement(U256::from_str_radix(fixed_hash.as_str(), 16).unwrap())
@@ -59,7 +67,76 @@ pub fn get_sign_hash_apdu(path: &str, hash: &str, show_hash: bool) -> Result<Vec
     Ok(v)
 }
 
-pub fn get_blur_sign_tx_apdu(
+
+pub fn get_clear_sign_apdus(
+    path: &str,
+    calls: &[Call],
+    sender_address: &str,
+    max_fee: &str,
+    chain_id: &str,
+    nonce: &str,
+    version: &str,
+) -> Result<Vec<Apdu>, ApduError> {
+    
+    let mut v: Vec<Apdu> = Vec::new();
+
+    // apdu 0
+    let mut header: ApduHeader = ApduHeader {
+        cla: 0x80, 
+        ins: 0x05,
+        p1: 0x00, 
+        p2: 0x00
+    };
+    v.push(set_derivation_path_apdu(path, &header));
+
+    // apdu 1
+    header = ApduHeader {
+        cla: 0x80, 
+        ins: 0x05,
+        p1: 0x01, 
+        p2: 0x00
+    };
+    v.push(callarray_len_apdu(calls, &header));
+
+    for i in 0..calls.len() {
+        // apdu call_array
+        header = ApduHeader {
+            cla: 0x80, 
+            ins: 0x05,
+            p1: 0x02, 
+            p2: i as u8
+        }; 
+        v.push(callarray_v1_apdu(&calls[i], &header));
+        
+        // apdu call_data
+        let len = calls[i].calldata.len();
+        /* 7 is the max number of 32-byte FieldElement in an APDU: 7 * 32 = 224 bytes <= MAX_APDU_DATA_SIZE */
+        let nb_calldata_apdu = len / 7;
+        for j in 0..=nb_calldata_apdu {
+            let cdata = &calls[i].calldata[j*7..std::cmp::min((j+1)*7, len)];
+            header = ApduHeader {
+                cla: 0x80, 
+                ins: 0x05,
+                p1: 0x03, 
+                p2: j as u8
+            };
+            v.push(calldata_v1_apdu(cdata, &header));
+        }
+    }
+
+    // Tx metadata: account address, max_fee, chain_id, nonce, version
+    header = ApduHeader {
+        cla: 0x80, 
+        ins: 0x05,
+        p1: 0x04, 
+        p2: 0x00
+    };
+    v.push(tx_metadata_apdu(sender_address, max_fee, chain_id, nonce, version, &header));
+
+    Ok(v)
+}
+
+/*pub fn get_blur_sign_tx_apdu(
     path: &str,
     calls: &[Call],
     aa: &str,
@@ -105,51 +182,4 @@ pub fn get_blur_sign_tx_apdu(
     v.append(&mut temp);
 
     Ok(v)
-}
-
-pub fn get_clear_sign_tx_apdu(
-    path: &str,
-    calls: &[Call],
-    aa: &str,
-    max_fee: &str,
-    chain_id: &str,
-    nonce: &str,
-    version: &str,
-) -> Result<Vec<Apdu>, ApduError> {
-    let mut v: Vec<Apdu> = Vec::new();
-
-    // Derivation path
-    let mut apdu = Apdu::new(0x80, 0x05, 0x00, 0x00);
-    build_set_derivation_path(path, &mut apdu);
-    v.push(apdu);
-
-    // call_array length 
-    apdu = Apdu::new(0x80, 0x05, 0x01, 0x00);
-    build_callarray_len(calls, &mut apdu);
-    v.push(apdu);
-
-    for i in 0..calls.len() {
-        // call_array 
-        apdu = Apdu::new(0x80, 0x05, 0x02, i as u8);
-        build_callarray_v1_apdu(&calls[i], &mut apdu);
-        v.push(apdu);
-        
-        // call_data
-        let len = calls[i].calldata.len();
-        /* 7 is the max number of 32-byte FieldElement in an APDU: 7 * 32 = 224 bytes <= MAX_APDU_DATA_SIZE */
-        let nb_calldata_apdu = len / 7;
-        for j in 0..=nb_calldata_apdu {
-            let cdata = &calls[i].calldata[j*7..std::cmp::min((j+1)*7, len)];
-            apdu = Apdu::new(0x80, 0x05, 0x03, j as u8);
-            build_calldata_v1_apdu(cdata, &mut apdu);
-            v.push(apdu);
-        }
-    }
-
-    // Tx metadata: account address, max_fee, chain_id, nonce, version
-    apdu = Apdu::new(0x80, 0x03, 0x04, 0x00);
-    build_tx_metadata(aa, max_fee, chain_id, nonce, version, &mut apdu);
-    v.push(apdu);
-
-    Ok(v)
-}
+}*/

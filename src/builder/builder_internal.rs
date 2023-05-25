@@ -1,10 +1,13 @@
-use crate::apdu::{Apdu, Call, FieldElement};
+use crate::apdu::{Apdu, ApduHeader};
+use crate::types::{Call, FieldElement};
 use ethereum_types::U256;
 
 /// Build Derivation path APDU
-pub fn build_set_derivation_path(path: &str, apdu: &mut Apdu) {
+pub fn set_derivation_path_apdu(path: &str, apdu_header: &ApduHeader) -> Apdu {
+
+    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+
     let mut bip32_path: Vec<u32> = Vec::new();
-    
     if let Some(spath) = path.strip_prefix("m/") {
         for s in spath.split('/') {
             let val: u32 = match s.ends_with('\'') {
@@ -17,19 +20,71 @@ pub fn build_set_derivation_path(path: &str, apdu: &mut Apdu) {
             apdu.append(val.to_be_bytes().as_slice()).unwrap();
         }
     }
+    apdu
+}
+
+pub fn callarray_len_apdu(calls: &[Call], apdu_header: &ApduHeader) -> Apdu {
+
+    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+
+    let call_array_len = FieldElement(U256::from(calls.len()));
+    let data: [u8; 32] = call_array_len.try_into().unwrap();
+    apdu.append(&data[..]).unwrap();
+
+    apdu
+}
+
+pub fn callarray_v1_apdu(c: &Call, apdu_header: &ApduHeader) -> Apdu {
+    
+    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+
+    let mut data: [u8; 32];
+
+    let to: FieldElement = FieldElement(U256::from_str_radix(&c.to, 16).unwrap());
+    data = to.try_into().unwrap();
+    apdu.append(&data[..]).unwrap();
+
+    let selector: FieldElement = FieldElement(U256::from_str_radix(&c.selector, 16).unwrap());
+    data = selector.try_into().unwrap();
+    apdu.append(data.as_slice()).unwrap();
+
+    let call_data_len: FieldElement =
+        FieldElement(U256::from(c.calldata.len()));
+    data = call_data_len.try_into().unwrap();
+    apdu.append(&data[..]).unwrap();
+
+    apdu
+}
+
+pub fn calldata_v1_apdu(calldata: &[String], apdu_header: &ApduHeader) -> Apdu {
+
+    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+    
+    let mut data: [u8; 32];
+
+    for cd in calldata {
+        let d = FieldElement(U256::from_str_radix(cd, 16).unwrap());
+        data = d.try_into().unwrap();
+        apdu.append(data.as_slice()).unwrap();
+    }
+
+    apdu
 }
 
 /// Build Starknet Tx fields APDU
-pub fn build_tx_metadata(
-    aa: &str,
+pub fn tx_metadata_apdu (
+    sender_address: &str,
     max_fee: &str,
     chain_id: &str,
     nonce: &str,
     version: &str,
-    apdu: &mut Apdu,
-) {
-    let sender_address: FieldElement = FieldElement(U256::from_str_radix(aa, 16).unwrap());
-    let mut data: [u8; 32] = sender_address.try_into().unwrap();
+    apdu_header: &ApduHeader,
+) -> Apdu {
+
+    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+
+    let sender: FieldElement = FieldElement(U256::from_str_radix(sender_address, 16).unwrap());
+    let mut data: [u8; 32] = sender.try_into().unwrap();
     apdu.append(data.as_slice()).unwrap();
 
     let max_fee: FieldElement = FieldElement(U256::from_str_radix(max_fee, 10).unwrap());
@@ -47,9 +102,20 @@ pub fn build_tx_metadata(
     let version: FieldElement = FieldElement(U256::from_dec_str(version).unwrap());
     data = version.try_into().unwrap();
     apdu.append(data.as_slice()).unwrap();
+
+    apdu
 }
 
-pub fn build_calls_metadata(calls: &[Call], apdu: &mut Apdu) {
+pub fn fix(hash: &mut String) {
+    // fix pedersen hash to fit into 32 bytes
+    while hash.len() < 63 {
+        hash.insert(0, '0');
+    }
+    assert!(hash.len() == 63);
+    hash.push('0');
+}
+
+/*pub fn build_calls_metadata(calls: &[Call], apdu: &mut Apdu) {
     let call_array_len: FieldElement =
         FieldElement(U256::from_big_endian(calls.len().to_be_bytes().as_slice()));
     let mut data: [u8; 32] = call_array_len.try_into().unwrap();
@@ -65,16 +131,9 @@ pub fn build_calls_metadata(calls: &[Call], apdu: &mut Apdu) {
     data = calldata_len.try_into().unwrap();
     apdu.append(data.as_slice()).unwrap();
 
-}
+}*/
 
-pub fn build_callarray_len(calls: &[Call], apdu: &mut Apdu) {
-    let call_array_len: FieldElement =
-        FieldElement(U256::from_big_endian(calls.len().to_be_bytes().as_slice()));
-    let data: [u8; 32] = call_array_len.try_into().unwrap();
-    apdu.append(data.as_slice()).unwrap();
-}
-
-pub fn build_callarray_apdu(c: &Call, apdu: &mut Apdu, offset: &u8) {
+/*pub fn build_callarray_apdu(c: &Call, apdu: &mut Apdu, offset: &u8) {
     let mut data: [u8; 32];
 
     let to: FieldElement = FieldElement(U256::from_str_radix(c.to, 16).unwrap());
@@ -109,43 +168,4 @@ pub fn build_calldata_apdu(c: &Call, apdu: &mut Apdu) {
         data = fe.try_into().unwrap();
         apdu.append(data.as_slice()).unwrap();
     }
-}
-
-pub fn build_callarray_v1_apdu(c: &Call, apdu: &mut Apdu) {
-    
-    let mut data: [u8; 32];
-
-    let to: FieldElement = FieldElement(U256::from_str_radix(c.to, 16).unwrap());
-    data = to.try_into().unwrap();
-    apdu.append(data.as_slice()).unwrap();
-
-    let selector: FieldElement = FieldElement(U256::from_str_radix(c.selector, 16).unwrap());
-    data = selector.try_into().unwrap();
-    apdu.append(data.as_slice()).unwrap();
-
-    let call_data_len: FieldElement =
-        FieldElement(U256::from_big_endian(c.calldata.len().to_be_bytes().as_slice()));
-    data = call_data_len.try_into().unwrap();
-    apdu.append(data.as_slice()).unwrap();
-}
-
-pub fn build_calldata_v1_apdu(calldata: &[&str], apdu: &mut Apdu) {
-    
-    let mut data: [u8; 32];
-
-    for cd in calldata {
-        let d = FieldElement(U256::from_str_radix(*cd, 16).unwrap());
-        data = d.try_into().unwrap();
-        apdu.append(data.as_slice()).unwrap();
-    }
-}
-
-
-pub fn fix(hash: &mut String) {
-    // fix pedersen hash to fit into 32 bytes
-    while hash.len() < 63 {
-        hash.insert(0, '0');
-    }
-    assert!(hash.len() == 63);
-    hash.push('0');
-}
+}*/
