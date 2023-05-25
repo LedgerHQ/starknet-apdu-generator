@@ -9,6 +9,7 @@ const PATH: &str = "m/2645'/1195502025'/1148870696'/0'/0'/0";
 use std::fs::File;
 use std::io::prelude::*;
 
+
 fn main() {
     
     let mut file = File::open("transaction.json").unwrap();
@@ -20,11 +21,12 @@ fn main() {
     println!("=> Clear Sign Tx APDUs:");
     match apdu_generator::builder::get_clear_sign_apdus(PATH, &tx.calls, &tx.sender_address, &tx.max_fee, &tx.chain_id, &tx.nonce, &tx.version) {
         Ok(v) => {
+            let mut file_out = File::create("apdu.dat").unwrap();
             for apdu in v {
-                println!("{apdu}")
+                println!("{apdu}");
+                writeln!(file_out, "=> {}", apdu).unwrap();
             }
         }
         Err(_e) => println!("Internal error")
     }
-
 }

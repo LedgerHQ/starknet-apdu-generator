@@ -17,7 +17,7 @@ pub enum ApduError {
 }
 
 pub fn get_version_apdus() -> Result<Vec<Apdu>, ApduError> {
-    Ok(vec![Apdu::new(0x80, 0x00, 0x00, 0x00)])
+    Ok(vec![Apdu::new(ApduHeader {cla: 0x80, ins: 0x00, p1: 0x00, p2: 0x00})])
 }
 
 pub fn get_pubkey_apdus(path: &str) -> Result<Vec<Apdu>, ApduError> {
@@ -27,7 +27,7 @@ pub fn get_pubkey_apdus(path: &str) -> Result<Vec<Apdu>, ApduError> {
         p1: 0x00, 
         p2: 0x00
     };
-    let apdu = set_derivation_path_apdu(path, &header);
+    let apdu = set_derivation_path_apdu(path, header);
     Ok(vec![apdu])
 }
 
@@ -42,7 +42,7 @@ pub fn get_blind_sign_apdus(path: &str, hash: &str, show_hash: bool) -> Result<V
         p1: 0x00, 
         p2: 0x00
     };
-    v.push(set_derivation_path_apdu(path, &header));
+    v.push(set_derivation_path_apdu(path, header));
 
     // apdu 1
     header.p1 = 0x01;
@@ -50,7 +50,7 @@ pub fn get_blind_sign_apdus(path: &str, hash: &str, show_hash: bool) -> Result<V
         true => 0x01,
         false => 0x00,
     };
-    let mut apdu = Apdu::new(header.cla, header.ins, header.p1, header.p2);
+    let mut apdu = Apdu::new(header);
 
     let mut fixed_hash = String::from(hash.trim_start_matches("0x"));
     fix(&mut fixed_hash);
@@ -87,7 +87,7 @@ pub fn get_clear_sign_apdus(
         p1: 0x00, 
         p2: 0x00
     };
-    v.push(set_derivation_path_apdu(path, &header));
+    v.push(set_derivation_path_apdu(path, header));
 
     // apdu 1
     header = ApduHeader {
@@ -96,7 +96,7 @@ pub fn get_clear_sign_apdus(
         p1: 0x01, 
         p2: 0x00
     };
-    v.push(callarray_len_apdu(calls, &header));
+    v.push(callarray_len_apdu(calls, header));
 
     for i in 0..calls.len() {
         // apdu call_array
@@ -106,7 +106,7 @@ pub fn get_clear_sign_apdus(
             p1: 0x02, 
             p2: i as u8
         }; 
-        v.push(callarray_v1_apdu(&calls[i], &header));
+        v.push(callarray_v1_apdu(&calls[i], header));
         
         // apdu call_data
         let len = calls[i].calldata.len();
@@ -120,7 +120,7 @@ pub fn get_clear_sign_apdus(
                 p1: 0x03, 
                 p2: j as u8
             };
-            v.push(calldata_v1_apdu(cdata, &header));
+            v.push(calldata_v1_apdu(cdata, header));
         }
     }
 
@@ -131,7 +131,7 @@ pub fn get_clear_sign_apdus(
         p1: 0x04, 
         p2: 0x00
     };
-    v.push(tx_metadata_apdu(sender_address, max_fee, chain_id, nonce, version, &header));
+    v.push(tx_metadata_apdu(sender_address, max_fee, chain_id, nonce, version, header));
 
     Ok(v)
 }

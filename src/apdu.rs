@@ -2,6 +2,7 @@ use std::fmt;
 
 const MAX_APDU_DATA_SIZE: usize = 255;
 
+#[derive(Copy, Clone)]
 pub struct ApduHeader {
     pub cla: u8,
     pub ins: u8,
@@ -16,14 +17,9 @@ pub struct Apdu {
 }
 
 impl Apdu {
-    pub fn new(cla: u8, ins: u8, p1: u8, p2: u8) -> Self {
+    pub fn new(header: ApduHeader) -> Self {
         Apdu {
-            header: ApduHeader {
-                cla,
-                ins,
-                p1,
-                p2,
-            },
+            header,
             len: 0x00,
             data: [0u8; MAX_APDU_DATA_SIZE],
         }

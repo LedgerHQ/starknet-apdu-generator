@@ -3,9 +3,9 @@ use crate::types::{Call, FieldElement};
 use ethereum_types::U256;
 
 /// Build Derivation path APDU
-pub fn set_derivation_path_apdu(path: &str, apdu_header: &ApduHeader) -> Apdu {
+pub fn set_derivation_path_apdu(path: &str, apdu_header: ApduHeader) -> Apdu {
 
-    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+    let mut apdu = Apdu::new(apdu_header);
 
     let mut bip32_path: Vec<u32> = Vec::new();
     if let Some(spath) = path.strip_prefix("m/") {
@@ -23,9 +23,9 @@ pub fn set_derivation_path_apdu(path: &str, apdu_header: &ApduHeader) -> Apdu {
     apdu
 }
 
-pub fn callarray_len_apdu(calls: &[Call], apdu_header: &ApduHeader) -> Apdu {
+pub fn callarray_len_apdu(calls: &[Call], apdu_header: ApduHeader) -> Apdu {
 
-    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+    let mut apdu = Apdu::new(apdu_header);
 
     let call_array_len = FieldElement(U256::from(calls.len()));
     let data: [u8; 32] = call_array_len.try_into().unwrap();
@@ -34,9 +34,9 @@ pub fn callarray_len_apdu(calls: &[Call], apdu_header: &ApduHeader) -> Apdu {
     apdu
 }
 
-pub fn callarray_v1_apdu(c: &Call, apdu_header: &ApduHeader) -> Apdu {
+pub fn callarray_v1_apdu(c: &Call, apdu_header: ApduHeader) -> Apdu {
     
-    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+    let mut apdu = Apdu::new(apdu_header);
 
     let mut data: [u8; 32];
 
@@ -56,9 +56,9 @@ pub fn callarray_v1_apdu(c: &Call, apdu_header: &ApduHeader) -> Apdu {
     apdu
 }
 
-pub fn calldata_v1_apdu(calldata: &[String], apdu_header: &ApduHeader) -> Apdu {
+pub fn calldata_v1_apdu(calldata: &[String], apdu_header: ApduHeader) -> Apdu {
 
-    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+    let mut apdu = Apdu::new(apdu_header);
     
     let mut data: [u8; 32];
 
@@ -78,10 +78,10 @@ pub fn tx_metadata_apdu (
     chain_id: &str,
     nonce: &str,
     version: &str,
-    apdu_header: &ApduHeader,
+    apdu_header: ApduHeader,
 ) -> Apdu {
 
-    let mut apdu = Apdu::new(apdu_header.cla, apdu_header.ins, apdu_header.p1, apdu_header.p2);
+    let mut apdu = Apdu::new(apdu_header);
 
     let sender: FieldElement = FieldElement(U256::from_str_radix(sender_address, 16).unwrap());
     let mut data: [u8; 32] = sender.try_into().unwrap();
