@@ -2,7 +2,9 @@ use ethereum_types::U256;
 use std::fmt;
 use serde::Deserialize;
 
+#[derive(Copy, Clone, Debug)]
 pub struct FieldElement(pub U256);
+
 impl fmt::Display for FieldElement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = [0u8; 32];
@@ -23,6 +25,20 @@ impl TryFrom<FieldElement> for [u8; 32] {
     }
 }
 
+impl TryFrom<&str> for FieldElement {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.starts_with("0x") {
+            true => {
+                Ok(FieldElement(U256::from_str_radix(s, 16).unwrap()))
+            }
+            false => {
+                Ok(FieldElement(U256::from_str_radix(s, 10).unwrap()))
+            }
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub enum Ins {
     GetVersion,
@@ -30,17 +46,31 @@ pub enum Ins {
     SignHash,
     SignTx,
     PedersenHash,
+    Unknown
 }
 
-impl TryFrom<Ins> for u8 {
-    type Error = ();
-    fn try_from(value: Ins) -> Result<Self, Self::Error> {
+impl From<Ins> for u8 {
+    fn from(value: Ins) -> Self {
         match value {
-            Ins::GetVersion => Ok(0),
-            Ins::GetPubkey => Ok(1),
-            Ins::SignHash => Ok(2),
-            Ins::SignTx => Ok(3),
-            Ins::PedersenHash => Ok(4),
+            Ins::GetVersion => 0u8,
+            Ins::GetPubkey => 1u8,
+            Ins::SignHash => 2u8,
+            Ins::SignTx => 3u8,
+            Ins::PedersenHash => 4u8,
+            Ins::Unknown => 0xff
+        }
+    }
+}
+
+impl From<u8> for Ins {
+    fn from(v: u8) -> Self {
+        match v {
+            0 => Ins::GetVersion,
+            1 => Ins::GetPubkey,
+            2 => Ins::SignHash,
+            3 => Ins::SignTx,
+            4 => Ins::PedersenHash,
+            5.. => Ins::Unknown
         }
     }
 }
@@ -51,6 +81,26 @@ pub struct Call {
     pub entrypoint: String,
     pub selector: String,
     pub calldata: Vec<String>
+}
+
+impl From<&Call> for Vec<FieldElement> {
+    
+    fn from(c: &Call) -> Self {
+
+        let mut v: Vec<FieldElement> = Vec::new();
+
+        let to = FieldElement(U256::from_str_radix(&c.to, 16).unwrap());        
+        v.push(to);
+
+        let selector = FieldElement(U256::from_str_radix(&c.selector, 16).unwrap());
+        v.push(selector);
+
+        for c in c.calldata.iter() {
+            let data = FieldElement(U256::from_str_radix(c, 16).unwrap());
+            v.push(data);
+        }
+        v
+    }
 }
 
 #[derive(Deserialize, Debug)]

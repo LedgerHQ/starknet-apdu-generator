@@ -8,25 +8,55 @@ const PATH: &str = "m/2645'/1195502025'/1148870696'/0'/0'/0";
 
 use std::fs::File;
 use std::io::prelude::*;
+use clap::Parser;
 
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// Tx in JSON format filename
+    #[arg(short, long)]
+    json: String,
+
+    /// APDU CLA
+    #[arg(short, long, default_value_t = 0x80)]
+    cla: u8,
+
+    /// APDU INS
+    #[arg(short, long, default_value_t = 0x03)]
+    ins: u8,
+
+    /// fileout
+    #[arg(short, long, default_value_t = String::from("apdu.dat"))]
+    fileout: String
+}
 
 fn main() {
+
+    let args: Args = Args::parse();
     
-    let mut file = File::open("transaction.json").unwrap();
+    let mut file = File::open(args.json).unwrap();
     let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
 
-    let tx: apdu_generator::types::Tx = serde_json::from_str(&data).unwrap();
+    let mut tx: apdu_generator::types::Tx = serde_json::from_str(&data).unwrap();
+    tx.calls.reverse();
+    let mut file_out = File::create(args.fileout).unwrap();
 
-    println!("=> Clear Sign Tx APDUs:");
-    match apdu_generator::builder::get_clear_sign_apdus(PATH, &tx.calls, &tx.sender_address, &tx.max_fee, &tx.chain_id, &tx.nonce, &tx.version) {
-        Ok(v) => {
-            let mut file_out = File::create("apdu.dat").unwrap();
-            for apdu in v {
-                println!("{apdu}");
-                writeln!(file_out, "=> {}", apdu).unwrap();
-            }
+    let dpath_apdu = apdu_generator::builder::derivation_path_to_apdu(PATH, args.cla, args.ins.into(), 0);
+    println!("=> {}", dpath_apdu);
+    writeln!(file_out, "=> {}", dpath_apdu).unwrap();
+
+    let txinfo_apdu = apdu_generator::builder::txinfo_to_apdu(&tx, args.cla, args.ins.into(), 1);
+    println!("=> {}",txinfo_apdu);
+    writeln!(file_out, "=> {}", txinfo_apdu).unwrap();
+
+    while tx.calls.len() > 0 {
+        let call = tx.calls.pop().unwrap();
+        let apdu = apdu_generator::builder::call_to_apdu(&call, args.cla, args.ins.into());
+        for a in apdu {
+            println!("=> {a}");
+            writeln!(file_out, "=> {}", a).unwrap();
         }
-        Err(_e) => println!("Internal error")
     }
 }
