@@ -31,6 +31,8 @@ struct Args {
     fileout: String
 }
 
+use apdu_generator::apdu::Apdu;
+
 fn main() {
 
     let args: Args = Args::parse();
@@ -41,14 +43,26 @@ fn main() {
 
     let mut tx: apdu_generator::types::Tx = serde_json::from_str(&data).unwrap();
     tx.calls.reverse();
-    let mut file_out = File::create(args.fileout).unwrap();
+    
+    //let mut file_out = File::create(args.fileout).unwrap();
+
+    let mut apdus: Vec<Apdu> = Vec::new();
 
     let dpath_apdu = apdu_generator::builder::derivation_path_to_apdu(PATH, args.cla, args.ins.into(), 0);
-    println!("=> {}", dpath_apdu);
-    writeln!(file_out, "=> {}", dpath_apdu).unwrap();
+    apdus.push(dpath_apdu);
+    
+    
+    //println!("{}", serde_json::to_string_pretty(&dpath_apdu).unwrap());
+    
+    //println!("=> {}", dpath_apdu);
+    //writeln!(file_out, "=> {}", dpath_apdu).unwrap();
 
     let txinfo_apdu = apdu_generator::builder::txinfo_to_apdu(&tx, args.cla, args.ins.into(), 1);
-    println!("=> {}",txinfo_apdu);
+    apdus.push(txinfo_apdu);
+    
+    println!("{}", serde_json::to_string_pretty(&apdus).unwrap());
+    
+    /*println!("=> {}",txinfo_apdu);
     writeln!(file_out, "=> {}", txinfo_apdu).unwrap();
 
     while tx.calls.len() > 0 {
@@ -58,5 +72,5 @@ fn main() {
             println!("=> {a}");
             writeln!(file_out, "=> {}", a).unwrap();
         }
-    }
+    }*/
 }
