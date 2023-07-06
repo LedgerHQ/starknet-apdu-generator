@@ -52,16 +52,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "apdu_generator"
-version = "0.1.0"
-dependencies = [
- "clap",
- "ethereum-types",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -275,6 +265,9 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "impl-codec"
@@ -551,6 +544,17 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "starknet-apdu-generator"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "ethereum-types",
+ "hex",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

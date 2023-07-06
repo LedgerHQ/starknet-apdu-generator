@@ -1,4 +1,4 @@
-use crate::apdu::{Apdu, ApduHeader};
+use crate::apdu::{ApduHeader, Apdu};
 use crate::types::{Call, FieldElement, Tx, Ins};
 use ethereum_types::U256;
 
