@@ -1,5 +1,4 @@
-use ledger_proto::ApduHeader;
-use crate::apdu::{Apdu};
+use crate::apdu::{ApduHeader, Apdu};
 use crate::types::{Call, FieldElement, Tx, Ins};
 use ethereum_types::U256;
 

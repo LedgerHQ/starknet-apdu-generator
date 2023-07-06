@@ -1,12 +1,10 @@
 use std::fmt;
 use serde::Serialize;
-use ledger_proto::ApduHeader;
 
 const MAX_APDU_DATA_SIZE: usize = 255;
 
-#[derive(Serialize)]
-#[serde(remote = "ApduHeader")]
-struct ApduHeaderDef {
+#[derive(Default, Clone, Serialize)]
+pub struct ApduHeader {
       pub cla: u8,
       pub ins: u8,
       pub p1: u8,
@@ -15,7 +13,6 @@ struct ApduHeaderDef {
 
 #[derive(Default, Clone, Serialize)]
 pub struct Apdu {
-    #[serde(with = "ApduHeaderDef")]
     pub header: ApduHeader,
     #[serde(with = "hex::serde")]
     pub data: Vec<u8>,

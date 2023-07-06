@@ -24,14 +24,14 @@ struct Args {
 
     /// APDU INS
     #[arg(short, long, default_value_t = 0x03)]
-    ins: u8,
-
-    /// fileout
-    #[arg(short, long, default_value_t = String::from("apdu.dat"))]
-    fileout: String
+    ins: u8
 }
 
-use apdu_generator::apdu::Apdu;
+use starknet_apdu_generator::{
+    apdu::Apdu,
+    types::Tx,
+    builder
+};
 
 fn main() {
 
@@ -41,36 +41,30 @@ fn main() {
     let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
 
-    let mut tx: apdu_generator::types::Tx = serde_json::from_str(&data).unwrap();
+    let mut tx: Tx = serde_json::from_str(&data).unwrap();
     tx.calls.reverse();
     
-    //let mut file_out = File::create(args.fileout).unwrap();
-
     let mut apdus: Vec<Apdu> = Vec::new();
 
-    let dpath_apdu = apdu_generator::builder::derivation_path_to_apdu(PATH, args.cla, args.ins.into(), 0);
-    apdus.push(dpath_apdu);
+    let dpath_apdu = builder::derivation_path_to_apdu(PATH, args.cla, args.ins.into(), 0);
+    apdus.push(dpath_apdu.clone());
     
+    let txinfo_apdu = builder::txinfo_to_apdu(&tx, args.cla, args.ins.into(), 1);
+    apdus.push(txinfo_apdu.clone());
     
-    //println!("{}", serde_json::to_string_pretty(&dpath_apdu).unwrap());
-    
-    //println!("=> {}", dpath_apdu);
-    //writeln!(file_out, "=> {}", dpath_apdu).unwrap();
-
-    let txinfo_apdu = apdu_generator::builder::txinfo_to_apdu(&tx, args.cla, args.ins.into(), 1);
-    apdus.push(txinfo_apdu);
-    
-    println!("{}", serde_json::to_string_pretty(&apdus).unwrap());
-    
-    /*println!("=> {}",txinfo_apdu);
-    writeln!(file_out, "=> {}", txinfo_apdu).unwrap();
-
     while tx.calls.len() > 0 {
         let call = tx.calls.pop().unwrap();
-        let apdu = apdu_generator::builder::call_to_apdu(&call, args.cla, args.ins.into());
-        for a in apdu {
-            println!("=> {a}");
-            writeln!(file_out, "=> {}", a).unwrap();
-        }
-    }*/
+        let mut call_apdu = builder::call_to_apdu(&call, args.cla, args.ins.into());
+        apdus.append(&mut call_apdu);
+    }
+    
+
+    let mut json_out = File::create("apdu.json").unwrap();
+    let mut raw_out = File::create("apdu.dat").unwrap();
+    for a in apdus.iter() {
+        println!("=> {}", a);
+        writeln!(raw_out, "=> {}", a).unwrap();
+    }
+    writeln!(json_out, "{}", serde_json::to_string_pretty(&apdus).unwrap()).unwrap();
+    
 }
