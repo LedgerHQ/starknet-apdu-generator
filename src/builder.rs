@@ -25,6 +25,19 @@ pub fn get_pubkey_apdus(path: &str) -> Result<Vec<Apdu>, ApduError> {
 }
 */
 
+
+pub fn data_to_apdu(data: Vec<FieldElement>, cla: u8, ins: u8, p1: u8, p2: u8) -> Apdu {
+
+    let apdu_header = ApduHeader { cla: cla, ins: ins.into(), p1, p2};
+    let mut apdu = Apdu::new(apdu_header);
+
+    for felt in data {
+        let arr: [u8; 32] = felt.try_into().unwrap();
+        apdu.append(&arr[..]).unwrap();
+    }
+    apdu
+}
+
 pub fn pedersenhash_to_apdu(hash: &str, cla: u8, ins: Ins, sub_ins: u8, show_hash: bool) -> Apdu {
 
     let header: ApduHeader = ApduHeader {

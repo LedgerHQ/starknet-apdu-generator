@@ -112,3 +112,8 @@ pub struct Tx {
     pub chain_id: String,
     pub calls: Vec<Call>
 }
+
+#[derive(Deserialize, Debug)]
+pub struct Data {
+    pub felts: Vec<String>
+}
