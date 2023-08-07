@@ -1,20 +1,13 @@
-//! Utility to generate APDU for Tx blur or clear signing with Starknet Nano application
-//! (see [Starknet Tx format](https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#invoke_transaction_version_1))
-
-/// Derivation path
-const PATH: &str = "m/2645'/1195502025'/1148870696'/0'/0'/0";
-/// Hash
-//const HASH: &str = "0x55b8f28706a5008d3103bcb2bfa6356e56b95c34fed265c955846670a6bb4ef";
-
 use std::fs::File;
 use std::io::prelude::*;
 use clap::Parser;
 
-/// Simple program to greet a person
+/// Utility to generate APDUs for Tx blur or clear signing with Starknet Nano application
+/// (see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#invoke_transaction_version_1)
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Tx in JSON format filename
+    /// Tx in JSON format 
     #[arg(short, long)]
     json: String,
 
@@ -32,6 +25,11 @@ use starknet_apdu_generator::{
     types::Tx,
     builder
 };
+
+// Derivation path
+const PATH: &str = "m/2645'/1195502025'/1148870696'/0'/0'/0";
+// Hash
+// const HASH: &str = "0x55b8f28706a5008d3103bcb2bfa6356e56b95c34fed265c955846670a6bb4ef";
 
 fn main() {
 
@@ -66,5 +64,4 @@ fn main() {
         writeln!(raw_out, "=> {}", a).unwrap();
     }
     writeln!(json_out, "{}", serde_json::to_string_pretty(&apdus).unwrap()).unwrap();
-    
 }

@@ -2,11 +2,13 @@ use std::fs::File;
 use std::io::prelude::*;
 use clap::Parser;
 
-/// Simple program to greet a person
+/// Simple program to generate the APDU to be sent to Starknet Ledger HW 
+/// application to compute the Pedersen hash of 2 felts
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Tx in JSON format filename
+    /// JSON containing an array of two felts (hex strings,
+    /// see for instance input_samples/two_felts.json)
     #[arg(short, long)]
     json: String,
 
@@ -33,7 +35,7 @@ fn main() {
     let mut file_content = String::new();
     file.read_to_string(&mut file_content).unwrap();
 
-    let mut data: Data = serde_json::from_str(&file_content).unwrap();
+    let data: Data = serde_json::from_str(&file_content).unwrap();
 
     println!("{}", data.felts.len());
     let mut felts: Vec<FieldElement> = vec![];
@@ -54,5 +56,4 @@ fn main() {
         writeln!(raw_out, "=> {}", a).unwrap();
     }
     writeln!(json_out, "{}", serde_json::to_string_pretty(&apdus).unwrap()).unwrap();
-    
 }
