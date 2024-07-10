@@ -1,6 +1,6 @@
 use ethereum_types::U256;
-use std::fmt;
 use serde::Deserialize;
+use std::fmt;
 
 #[derive(Copy, Clone, Debug)]
 pub struct FieldElement(pub U256);
@@ -29,12 +29,8 @@ impl TryFrom<&str> for FieldElement {
     type Error = ();
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         match s.starts_with("0x") {
-            true => {
-                Ok(FieldElement(U256::from_str_radix(s, 16).unwrap()))
-            }
-            false => {
-                Ok(FieldElement(U256::from_str_radix(s, 10).unwrap()))
-            }
+            true => Ok(FieldElement(U256::from_str_radix(s, 16).unwrap())),
+            false => Ok(FieldElement(U256::from_str_radix(s, 10).unwrap())),
         }
     }
 }
@@ -45,8 +41,7 @@ pub enum Ins {
     GetPubkey,
     SignHash,
     SignTx,
-    PedersenHash,
-    Unknown
+    Unknown,
 }
 
 impl From<Ins> for u8 {
@@ -56,8 +51,7 @@ impl From<Ins> for u8 {
             Ins::GetPubkey => 1u8,
             Ins::SignHash => 2u8,
             Ins::SignTx => 3u8,
-            Ins::PedersenHash => 4u8,
-            Ins::Unknown => 0xff
+            Ins::Unknown => 0xff,
         }
     }
 }
@@ -69,8 +63,7 @@ impl From<u8> for Ins {
             1 => Ins::GetPubkey,
             2 => Ins::SignHash,
             3 => Ins::SignTx,
-            4 => Ins::PedersenHash,
-            5.. => Ins::Unknown
+            4.. => Ins::Unknown,
         }
     }
 }
@@ -78,18 +71,15 @@ impl From<u8> for Ins {
 #[derive(Deserialize, Debug)]
 pub struct Call {
     pub to: String,
-    pub entrypoint: String,
     pub selector: String,
-    pub calldata: Vec<String>
+    pub calldata: Vec<String>,
 }
 
 impl From<&Call> for Vec<FieldElement> {
-    
     fn from(c: &Call) -> Self {
-
         let mut v: Vec<FieldElement> = Vec::new();
 
-        let to = FieldElement(U256::from_str_radix(&c.to, 16).unwrap());        
+        let to = FieldElement(U256::from_str_radix(&c.to, 16).unwrap());
         v.push(to);
 
         let selector = FieldElement(U256::from_str_radix(&c.selector, 16).unwrap());
@@ -106,14 +96,18 @@ impl From<&Call> for Vec<FieldElement> {
 #[derive(Deserialize, Debug)]
 pub struct Tx {
     pub sender_address: String,
-    pub max_fee: String,
-    pub nonce: String,
-    pub version: String,
+    pub tip: String,
+    pub l1_gas_bounds: String,
+    pub l2_gas_bounds: String,
+    pub paymaster_data: Vec<String>,
     pub chain_id: String,
-    pub calls: Vec<Call>
+    pub nonce: String,
+    pub data_availability_mode: String,
+    pub account_deployment_data: Vec<String>,
+    pub calls: Vec<Call>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Data {
-    pub felts: Vec<String>
+    pub felts: Vec<String>,
 }
